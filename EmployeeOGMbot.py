@@ -310,8 +310,14 @@ def callback_worker(call):
 
     elif call.data == 'leave_comment':
         try:
+            emp_id = call.message.chat.id  # блок выделения id сотрудника
+            sql = "SELECT employee_id FROM employees WHERE (tg_id = %s) and (master != True)"
+            val = (emp_id,)
+            cursor.execute(sql, val)
+            man_id = cursor.fetchone()[0]
+
             msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
-            EQuery['query_id'] = msg[0]
+            EQuery[man_id] = msg[0]
 
             msg = bot_3.send_message(call.message.chat.id, 'Слушаю...')
             bot_3.register_next_step_handler(msg, leave_comment)
@@ -395,7 +401,7 @@ def leave_comment(message):
         #query = user_dict[chat_id]
         comment = message.text
         sql = "INSERT INTO comments (author, text, created_date, query) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
-        val = (man_id, comment, datetime.now(), EQuery['query_id'])
+        val = (man_id, comment, datetime.now(), EQuery[man_id])
         cursor.execute(sql, val)
         db.commit()
 
