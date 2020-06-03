@@ -15,17 +15,27 @@ Query = {}
 bot_3 = telebot.TeleBot('1048673690:AAHPT1BfgqOoQ1bBXT1dcSiClLzwwOq0sPU')
 EQuery = {}
 
+sql = "SELECT tg_id FROM employees"
+cursor.execute(sql)
+allowed_users = cursor.fetchall()
+allowed_ids = []
+for i in allowed_users:
+    allowed_ids.append(str(i[0]))
 @bot_3.message_handler(commands=['menu'])
 def handle_commands(message):
     if message.text == '/menu':
-        keyboard = telebot.types.InlineKeyboardMarkup()
-        key_1 = telebot.types.InlineKeyboardButton('Все заявки (мои)', callback_data='my_queries')
-        keyboard.add(key_1)
-        key_2 = telebot.types.InlineKeyboardButton('Текущая заявка', callback_data='now_query')
-        keyboard.add(key_2)
-        key_3 = telebot.types.InlineKeyboardButton('Мои ТО', callback_data='my_to')
-        keyboard.add(key_3)
-        bot_3.send_message(message.chat.id, 'Меню', reply_markup=keyboard)
+        emp_id = str(message.chat.id)
+        if emp_id not in allowed_ids:
+            bot_3.send_message(message.chat.id, 'Вам не разрешено пользоваться этим ботом')
+        else:
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            key_1 = telebot.types.InlineKeyboardButton('Все заявки (мои)', callback_data='my_queries')
+            keyboard.add(key_1)
+            key_2 = telebot.types.InlineKeyboardButton('Текущая заявка', callback_data='now_query')
+            keyboard.add(key_2)
+            key_3 = telebot.types.InlineKeyboardButton('Мои ТО', callback_data='my_to')
+            keyboard.add(key_3)
+            bot_3.send_message(message.chat.id, 'Меню', reply_markup=keyboard)
 
 @bot_3.callback_query_handler(func=lambda call: True)
 def callback_worker(call):
