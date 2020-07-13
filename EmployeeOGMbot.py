@@ -35,14 +35,15 @@ while True:
                 if emp_id not in allowed_ids:
                     bot_3.send_message(message.chat.id, 'Вам не разрешено пользоваться этим ботом')
                 else:
-                    keyboard = telebot.types.InlineKeyboardMarkup()
-                    key_1 = telebot.types.InlineKeyboardButton('Все заявки (мои)', callback_data='my_queries')
-                    keyboard.add(key_1)
-                    key_2 = telebot.types.InlineKeyboardButton('Текущая заявка', callback_data='now_query')
-                    keyboard.add(key_2)
-                    key_3 = telebot.types.InlineKeyboardButton('Мои ТО', callback_data='my_to')
-                    keyboard.add(key_3)
-                    bot_3.send_message(message.chat.id, 'Меню', reply_markup=keyboard)
+                    #keyboard = telebot.types.InlineKeyboardMarkup()
+                    #key_1 = telebot.types.InlineKeyboardButton('Все заявки (мои)', callback_data='my_queries')
+                    #keyboard.add(key_1)
+                    #key_3 = telebot.types.InlineKeyboardButton('Мои ТО', callback_data='my_to')
+                    #keyboard.add(key_3)
+                    #bot_3.send_message(message.chat.id, 'Меню', reply_markup=keyboard)
+                    bot_3.send_message(message.chat.id, 'Это версия бота v.2. Здесь нету меню, но зато вы можете '
+                                                        'начинать, комментировать и заканчивать заявки прямо в том '
+                                                        'сообщении в котором заявка пришла.')
 
         @bot_3.callback_query_handler(func=lambda call: True)
         def callback_worker(call):
@@ -71,117 +72,44 @@ while True:
                 if m[0] == 'Завершена':
                     bot_3.send_message(call.message.chat.id, 'Заявка уже завершена...')
                 else:
-                    #try:
-                    sql = "SELECT start_time FROM queries WHERE (query_id = %s)"  # проверка на то , начаты ли работы уже
-                    val = (EQuery['query_id'],)
-                    cursor.execute(sql, val)
-                    st = cursor.fetchone()
-                    if st[0] == None:
-                        sql = "UPDATE queries SET query_status = %s, start_time = %s WHERE query_id = %s "  # 3аписывает время начала выполнения заявки (start time)
-                        val = ('В процессе', datetime.now(), EQuery['query_id'])
-                        cursor.execute(sql, val)
-                        db.commit()
-                    sql = "INSERT INTO worktime (query_id, employee_id, start_time) VALUES (%s, %s, %s)"   # создает новую запись в работы
-                    val = (EQuery['query_id'], man_id, datetime.now())
-                    cursor.execute(sql, val)
-                    db.commit()
-
-                    sql = "SELECT queries.query_id, equipment.eq_name, equipment.invnum, equipment.eq_type, " \
-                          "equipment.area, queries.reason, queries.msg FROM equipment JOIN queries ON (queries.query_id = %s) AND (queries.eq_id = equipment.eq_id)"
-                    val = (EQuery['query_id'],)
-                    cursor.execute(sql, val)
-                    query = cursor.fetchone()
-
-                    keyboard = telebot.types.InlineKeyboardMarkup()
-                    key_1 = telebot.types.InlineKeyboardButton('Заявка завершена.',
-                                                               callback_data='')
-                    keyboard.add(key_1)
-                    key_2 = telebot.types.InlineKeyboardButton('Комментарий...',
-                                                               callback_data='')
-                    keyboard.add(key_2)
-                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                                            parse_mode="Markdown",
-                                            text="*В процессе*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
-                                                 "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[2] + "\n" +
-                                                 "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
-                                                     4] + "\n" "*Причина поломки: *" + query[5] + "\n" + "*Сообщение: *" + str(query[6]) + "\n" + "*В процессе*")
-                    bot_3.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                                                    reply_markup=keyboard)
-
-
-
-                    #bot_3.send_message(call.message.chat.id, 'Поехали!')
-
-                    #except:
-                    #    bot_3.send_message(call.message.chat.id, 'Что то не работает! Какая то ошибка в блоке start_now')
-
-            elif call.data == 'go_this_query':
-                db = mysql.connector.connect(
-                    host='localhost',
-                    user='root',
-                    passwd='12345',
-                    port='3306',
-                    database='ogm2'
-                )
-                cursor = db.cursor(True)
-                emp_id = call.message.chat.id
-                try:
-                    sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
-                    val = (emp_id,)
-                    cursor.execute(sql, val)
-                    man_id = cursor.fetchone()[0]
-
-                    msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
-                    EQuery['query_id'] = msg[0]
-
-                    sql = "SELECT query_id, query_status, json_emp FROM queries WHERE (query_status = 'В процессе') AND (multiple = '0')"  # блок приостановки тех заявок где исполнитель один
-                    cursor.execute(sql)
-                    all_queries = cursor.fetchall()
-                    my_queries = []
                     try:
-                        for i in all_queries:  # сортировка по значению json файла
-                            json_emps_dict = json.loads(i[2])
-                            json_emps_list = json_emps_dict['doers']
-                            result_emp = int(json_emps_list[0])
-                            if result_emp == man_id:
-                                my_queries.append(i)
-                        for i in my_queries:
-                            sql = "UPDATE queries SET query_status = 'Приостановлена' WHERE query_id = %s"
-                            val = (i[0],)
+                        sql = "SELECT start_time FROM queries WHERE (query_id = %s)"  # проверка на то , начаты ли работы уже
+                        val = (EQuery['query_id'],)
+                        cursor.execute(sql, val)
+                        st = cursor.fetchone()
+                        if st[0] == None:
+                            sql = "UPDATE queries SET query_status = %s, start_time = %s WHERE query_id = %s "  # 3аписывает время начала выполнения заявки (start time)
+                            val = ('В процессе', datetime.now(), EQuery['query_id'])
                             cursor.execute(sql, val)
                             db.commit()
-                    except: pass
-
-                    sql = "SELECT start_time FROM queries WHERE (query_id = %s)"   #проверка на то , начаты ли работы уже
-                    val = (EQuery['query_id'],)
-                    cursor.execute(sql, val)
-                    st = cursor.fetchone()
-                    print(st)
-                    if st[0] == None:
-                        sql = "UPDATE queries SET query_status = %s, start_time = %s WHERE query_id = %s "  # 3аписывает время начала выполнения заявки (start time)
-                        val = ('В процессе', datetime.now(), EQuery['query_id'])
+                        sql = "INSERT INTO worktime (query_id, employee_id, start_time) VALUES (%s, %s, %s)"   # создает новую запись в работы
+                        val = (EQuery['query_id'], man_id, datetime.now())
                         cursor.execute(sql, val)
                         db.commit()
 
-                    sql = "UPDATE worktime SET stop_time = %s WHERE (stop_time IS NULL) and (employee_id = %s)"  # останавливает работы которые в процессе
-                    val = (datetime.now(), man_id)
-                    cursor.execute(sql, val)
-                    db.commit()
+                        sql = "SELECT queries.query_id, equipment.eq_name, equipment.invnum, equipment.eq_type, " \
+                              "equipment.area, queries.reason, queries.msg FROM equipment JOIN queries ON (queries.query_id = %s) AND (queries.eq_id = equipment.eq_id)"
+                        val = (EQuery['query_id'],)
+                        cursor.execute(sql, val)
+                        query = cursor.fetchone()
 
-                    sql = "INSERT INTO worktime (query_id, employee_id, start_time) VALUES (%s, %s, %s)"  # создает новую запись в работы
-                    val = (EQuery['query_id'], man_id, datetime.now())
-                    cursor.execute(sql, val)
-                    db.commit()
-
-                    sql = "UPDATE queries SET query_status = %s WHERE query_id = %s"  # блок начала выполнения заявки (статус в процессе)
-                    val = ('В процессе', EQuery['query_id'])
-                    cursor.execute(sql, val)
-                    db.commit()
-
-                    bot_3.send_message(call.message.chat.id, 'Поехали!')
-                    bot_3.edit_message_text(call.message.text, call.message.chat.id, call.message.message_id)
-                except:
-                    print('ошибка в го зис куери')
+                        keyboard = telebot.types.InlineKeyboardMarkup()
+                        key_1 = telebot.types.InlineKeyboardButton('Заявка завершена.',
+                                                                   callback_data='done_this_query')
+                        keyboard.add(key_1)
+                        key_2 = telebot.types.InlineKeyboardButton('Комментарий...',
+                                                                   callback_data='leave_comment')
+                        keyboard.add(key_2)
+                        bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                                parse_mode="Markdown",
+                                                text="*В процессе*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
+                                                     "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[2] + "\n" +
+                                                     "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
+                                                         4] + "\n" "*Причина поломки: *" + query[5] + "\n" + "*Сообщение: *" + str(query[6]) + "\n" + "*В процессе*")
+                        bot_3.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                                        reply_markup=keyboard)
+                    except:
+                        bot_3.send_message(call.message.chat.id, 'Что то не работает! Какая то ошибка в блоке start_now')
 
             elif call.data == 'my_queries':                                  # вывести все заявки сотрудника
                 #try:
@@ -221,7 +149,7 @@ while True:
                         bot_3.send_message(call.message.chat.id, 'Мои заявки:')
                         for query in my_queries:
                             keyboard = telebot.types.InlineKeyboardMarkup(row_width=2)
-                            key_1 = telebot.types.InlineKeyboardButton('Приступить', callback_data='go_this_query')
+                            key_1 = telebot.types.InlineKeyboardButton('Приступить', callback_data='done_this_query')
                             key_2 = telebot.types.InlineKeyboardButton('Комментарий', callback_data='leave_comment')
                             keyboard.add(key_1, key_2)
                             bot_3.send_message(call.message.chat.id, '*Id заявки: *' + str(query[6]) + "\n" + '*Наименование: *' + str(query[0]) + "\n" + "*Инв.№: *" + str(query[1]) + "\n" +
@@ -229,55 +157,6 @@ while True:
                                                query[4] + "\n" + "*Сообщение: *" + str(query[5]), reply_markup=keyboard, parse_mode="Markdown")
                 #except Exception as ex:
                     #print(ex)
-
-            elif call.data == 'now_query':                                  # вывести текущую заявку
-                try:
-                    db = mysql.connector.connect(
-                        host='localhost',
-                        user='root',
-                        passwd='12345',
-                        port='3306',
-                        database='ogm2'
-                    )
-                    cursor = db.cursor(True)
-                    emp_id = call.message.chat.id                           # блок выделения id сотрудника
-                    sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
-                    val = (emp_id,)
-                    cursor.execute(sql, val)
-                    man_id = cursor.fetchone()[0]
-                    # sql = "SELECT query_id, query_status, json_emp FROM queries WHERE (query_status = 'В процессе')"  # блок приостановки тех заявок где исполнитель один
-                    sql = "SELECT equipment.eq_name, equipment.invnum, equipment.eq_type, equipment.area, " \
-                          "queries.reason, queries.msg, queries.query_id, queries.json_emp FROM " \
-                          "equipment JOIN queries ON ((queries.eq_id = equipment.eq_id) AND (queries.query_status = %s)) "
-                    val = ("В процессе",)
-
-                    cursor.execute(sql, val)
-                    all_queries = cursor.fetchall()
-                    my_queries = []
-                    for i in all_queries:  # сортировка по значению json файла
-                        json_emps_dict = json.loads(i[-1])
-                        json_emps_list = json_emps_dict['doers']
-                        result_emps_list = [int(item) for item in json_emps_list]
-                        for j in result_emps_list:
-                            if j == man_id:
-                                my_queries.append(i)
-                    if len(my_queries) == 0:
-                        bot_3.send_message(call.message.chat.id, 'Кажется сейчас вы отдыхаете...')
-                    for query in my_queries:
-                        keyboard = telebot.types.InlineKeyboardMarkup()
-                        key_1 = telebot.types.InlineKeyboardButton('Приостановить выполнение заявки', callback_data='stop_this_query')
-                        keyboard.add(key_1)
-                        key_2 = telebot.types.InlineKeyboardButton('Заявка выполнена', callback_data='done_this_query')
-                        keyboard.add(key_2)
-                        key_3 = telebot.types.InlineKeyboardButton('Комментарий', callback_data='leave_comment')
-                        keyboard.add(key_3)
-                        bot_3.send_message(call.message.chat.id, '*id заявки: *' + str(query[-2]) + "\n" + '*Наименование: *' + query[0] + "\n" +
-                                       '*Инв.№: *' + query[1] + "\n" +
-                                       "*Тип: *" + query[2] + "\n" + "*Участок: *" + query[3] + "\n" + "*Причина поломки: *" +
-                                       query[4] + "\n" + "*Сообщение: *" + str(query[5]), reply_markup=keyboard, parse_mode="Markdown")
-                except Exception as ex:
-                    print(ex)
-                    bot_3.send_message(call.message.chat.id, 'Кажется сейчас вы отдыхаете...')
 
             elif call.data == 'done_this_query':
                 #try:
@@ -291,26 +170,45 @@ while True:
                 cursor = db.cursor(True)
                 msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
                 EQuery['query_id'] = msg[0]
-                sql = "UPDATE queries SET query_status = %s WHERE query_id = %s "
-                val = ('Завершена', EQuery['query_id'])
-                cursor.execute(sql, val)
-                db.commit()
-                sql = "UPDATE queries SET stop_time = %s WHERE query_id = %s"
-                val = (datetime.now(), EQuery['query_id'])
-                cursor.execute(sql, val)
-                db.commit()
-                sql = "SELECT * FROM worktime WHERE (query_id = %s) ORDER BY id DESC"
+                sql = "SELECT query_status FROM queries WHERE query_id = %s"
                 val = (EQuery['query_id'],)
                 cursor.execute(sql, val)
-                work_id = cursor.fetchall()
-                sql = "SELECT eq_id FROM queries WHERE (query_id = %s)"   #получаем ид обордования и ставим статус "Работает"
-                val = (EQuery['query_id'],)
-                cursor.execute(sql, val)
-                eq_id = cursor.fetchone()[0]
-                sql = "UPDATE equipment SET eq_status = 'Работает' WHERE (eq_id = %s)"
-                val = (eq_id,)
-                cursor.execute(sql, val)
-                try:
+                m = cursor.fetchone()
+                if m[0] == 'Завершена':
+                    sql = "SELECT queries.query_id, equipment.eq_name, equipment.invnum, equipment.eq_type, " \
+                          "equipment.area, queries.reason, queries.msg, queries.comment FROM equipment JOIN queries ON (queries.query_id = %s) AND (queries.eq_id = equipment.eq_id)"
+                    val = (EQuery['query_id'],)
+                    cursor.execute(sql, val)
+                    query = cursor.fetchone()
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            parse_mode="Markdown",
+                                            text="*ВЫПОЛНЕНА*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
+                                                 "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[2] + "\n" +
+                                                 "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
+                                                     4] + "\n" "*Причина поломки: *" + query[
+                                                     5] + "\n" + "*Сообщение: *" + str(
+                                                query[6]) + "\n" + "*ВЫПОЛНЕНА*")
+                else:
+                    sql = "UPDATE queries SET query_status = %s WHERE query_id = %s "
+                    val = ('Завершена', EQuery['query_id'])
+                    cursor.execute(sql, val)
+                    db.commit()
+                    sql = "UPDATE queries SET stop_time = %s WHERE query_id = %s"
+                    val = (datetime.now(), EQuery['query_id'])
+                    cursor.execute(sql, val)
+                    db.commit()
+                    sql = "SELECT * FROM worktime WHERE (query_id = %s) ORDER BY id DESC" #получаем все работы по заявке
+                    val = (EQuery['query_id'],)
+                    cursor.execute(sql, val)
+                    work_id = cursor.fetchall()
+                    sql = "SELECT eq_id FROM queries WHERE (query_id = %s)"   #получаем ид обордования и ставим статус "Работает"
+                    val = (EQuery['query_id'],)
+                    cursor.execute(sql, val)
+                    eq_id = cursor.fetchone()[0]
+                    sql = "UPDATE equipment SET eq_status = 'Работает' WHERE (eq_id = %s)"
+                    val = (eq_id,)
+                    cursor.execute(sql, val)
+
                     cursor.execute("SELECT * FROM eq_stoptime WHERE (eq_id = %s) AND (start_time IS NULL) ORDER BY id DESC LIMIT 1", [eq_id])
                     result = cursor.fetchone()
                     try:
@@ -319,76 +217,45 @@ while True:
                             i = result[0]
                             cursor.execute("UPDATE eq_stoptime SET start_time = %s WHERE id = %s", [datetime.now(), i])
                             db.commit()
-                            #a = Eq_stoptime.objects.get(id=i)
-                            #a.start_time = datetime.now()
-                            #a.save()
                     except:
                         pass
-                except:
-                    pass
-                for i in work_id:
-                    sql = "UPDATE worktime SET stop_time = %s WHERE (id = %s)"
-                    val = (datetime.now(), i[0])
-                    cursor.execute(sql, val)
-                    db.commit()
-                try:
-                    sql = "SELECT eq_name, invnum, eq_type, area FROM equipment WHERE (eq_id = %s)"
-                    val = (eq_id,)
-                    cursor.execute(sql, val)
-                    x = list(cursor.fetchone())
-                    name = x[0]
-                    invnum = x[1]
-                    eq_type = x[2]
-                    area = x[3]
-                    sql = "SELECT msg FROM queries WHERE query_id = %s"
-                    val = (EQuery['query_id'],)
-                    cursor.execute(sql, val)
-                    message = cursor.fetchone()[0]
-                    #Send_message.send_message_4(name, invnum, eq_type, area, message)
-                    bot_3.send_message(call.message.chat.id, 'Отлично!')
-                    bot_3.edit_message_text(call.message.text, call.message.chat.id, call.message.message_id)
-                except Exception as ex:
-                    print(ex)
-
-            elif call.data == 'stop_this_query':
-                try:
-                    db = mysql.connector.connect(
-                        host='localhost',
-                        user='root',
-                        passwd='12345',
-                        port='3306',
-                        database='ogm2'
-                    )
-                    cursor = db.cursor(True)
-                    msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
-                    EQuery['query_id'] = msg[0]
-                    sql = "UPDATE queries SET query_status = %s WHERE query_id = %s "
-                    val = ('Приостановлена', EQuery['query_id'])
-                    cursor.execute(sql, val)
-                    db.commit()
-
-                    emp_id = call.message.chat.id  # блок выделения id сотрудника
-                    sql = "SELECT employee_id FROM employees WHERE (tg_id = %s) and (master != True)"
-                    val = (emp_id,)
-                    cursor.execute(sql, val)
-                    man_id = cursor.fetchone()[0]
-
-                    sql = "SELECT * FROM worktime WHERE (query_id = %s) ORDER BY id DESC"
-                    val = (EQuery['query_id'],)
-                    cursor.execute(sql, val)
-                    work_id = cursor.fetchall()
 
                     for i in work_id:
-                        if i[2] == man_id:
-                            sql = "UPDATE worktime SET stop_time = %s WHERE (id = %s)"
-                            val = (datetime.now(), i[0])
-                            cursor.execute(sql, val)
-                            db.commit()
+                        sql = "UPDATE worktime SET stop_time = %s WHERE (id = %s)"
+                        val = (datetime.now(), i[0])
+                        cursor.execute(sql, val)
+                        db.commit()
 
-                    bot_3.send_message(call.message.chat.id, 'Заявка приостановлена')
-                    bot_3.edit_message_text(call.message.text, call.message.chat.id, call.message.message_id)
-                except:
-                    print('ошибка в соп зис кваери')
+                    sql="SELECT queries.query_id, equipment.eq_name, equipment.invnum, equipment.eq_type, " \
+                            "equipment.area, queries.reason, queries.msg FROM equipment JOIN queries ON (queries.query_id = %s) AND (queries.eq_id = equipment.eq_id)"
+                    val = (EQuery['query_id'],)
+                    cursor.execute(sql, val)
+                    query = cursor.fetchone()
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            parse_mode="Markdown",
+                                            text="*ВЫПОЛНЕНА*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
+                                                 "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[2] + "\n" +
+                                                 "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
+                                                     4] + "\n" "*Причина поломки: *" + query[
+                                                     5] + "\n" + "*Сообщение: *" + str(
+                                                query[6]) + "\n" + "*ВЫПОЛНЕНА*")
+
+                    try:
+                        sql = "SELECT eq_name, invnum, eq_type, area FROM equipment WHERE (eq_id = %s)"
+                        val = (eq_id,)
+                        cursor.execute(sql, val)
+                        x = list(cursor.fetchone())
+                        name = x[0]
+                        invnum = x[1]
+                        eq_type = x[2]
+                        area = x[3]
+                        sql = "SELECT msg FROM queries WHERE query_id = %s"
+                        val = (EQuery['query_id'],)
+                        cursor.execute(sql, val)
+                        message = cursor.fetchone()[0]
+                        #Send_message.send_message_4(name, invnum, eq_type, area, message)
+                    except Exception as ex:
+                        print(ex)
 
             elif call.data == 'leave_comment':
                 try:
@@ -409,11 +276,10 @@ while True:
                     msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
                     EQuery[man_id] = msg[0]
 
-                    msg = bot_3.send_message(call.message.chat.id, 'Слушаю...')
+                    msg = bot_3.send_message(call.message.chat.id, 'Слушаю комментарий...')
                     bot_3.register_next_step_handler(msg, leave_comment)
                 except Exception as ex:
                     print(ex)
-                    pass
 
             elif call.data == 'my_to':
                 db = mysql.connector.connect(
