@@ -253,7 +253,7 @@ while True:
                         val = (EQuery['query_id'],)
                         cursor.execute(sql, val)
                         message = cursor.fetchone()[0]
-                        #Send_message.send_message_4(name, invnum, eq_type, area, message)
+                        Send_message.send_message_4(name, invnum, eq_type, area, message)
                     except Exception as ex:
                         print(ex)
 
