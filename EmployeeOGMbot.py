@@ -348,11 +348,6 @@ while True:
                 cursor = db.cursor(True)
                 msg = re.findall(r'\d+', call.message.text)  # блок считывания id то
                 EQuery['to_id'] = msg[0]
-                sql = "UPDATE maintenance SET status = %s, start_time = %s WHERE id = %s "
-                val = ('В процессе', datetime.now(), EQuery['to_id'])
-                cursor.execute(sql, val)
-                db.commit()
-                #bot_3.send_message(call.message.chat.id, 'Поехали!')
 
                 sql = "SELECT equipment.eq_name, equipment.invnum, equipment.eq_type, equipment.area, maintenance.start_time " \
                       "FROM " \
@@ -361,15 +356,50 @@ while True:
                 cursor.execute(sql, val)
                 msg = cursor.fetchone()
 
-                keyboard = telebot.types.InlineKeyboardMarkup()
-                key_1 = telebot.types.InlineKeyboardButton('ТО_завершено. Неисправностей не обнаружено.', callback_data='to_done')
-                keyboard.add(key_1)
-                key_2 = telebot.types.InlineKeyboardButton('ТО завершено. Есть комментарий...', callback_data='comment_to')
-                keyboard.add(key_2)
-                bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="*ТО в процессе*" + "\n" + "*id_TO: *" + str(EQuery['to_id']) + "\n" +
-                       "*Оборудование: *" + msg[0] + "\n" + "*Инв.№: *" + msg[1] + "\n" +
-                       "*Тип станка: *" + msg[2] + "\n" + "*Участок: *" + msg[3] + "\n" "*Дата: *" + str(msg[4])[:10] + "\n" + "*ТО в процессе*", parse_mode="Markdown")
-                bot_3.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=keyboard)
+                sql = "SELECT status FROM maintenance WHERE (id = %s)"
+                val = (EQuery['to_id'],)
+                cursor.execute(sql, val)
+                status = cursor.fetchone()
+                if (status[0] == 'В процессе'):
+                    keyboard = telebot.types.InlineKeyboardMarkup()
+                    key_1 = telebot.types.InlineKeyboardButton('ТО_завершено. Неисправностей не обнаружено.',
+                                                               callback_data='to_done')
+                    keyboard.add(key_1)
+                    key_2 = telebot.types.InlineKeyboardButton('ТО завершено. Есть комментарий...',
+                                                               callback_data='comment_to')
+                    keyboard.add(key_2)
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            text="*ТО в процессе*" + "\n" + "*id_TO: *" + str(EQuery['to_id']) + "\n" +
+                                                 "*Оборудование: *" + msg[0] + "\n" + "*Инв.№: *" + msg[1] + "\n" +
+                                                 "*Тип станка: *" + msg[2] + "\n" + "*Участок: *" + msg[
+                                                     3] + "\n" "*Дата: *" + str(msg[4])[:10] + "\n" + "*ТО в процессе*",
+                                            parse_mode="Markdown")
+                    bot_3.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                                    reply_markup=keyboard)
+                elif status[0] == 'Завершено':
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            text="*ТО завершено*" + "\n" + "*id_TO: *" + str(EQuery['to_id']) + "\n" +
+                                                 "*Оборудование: *" + msg[0] + "\n" + "*Инв.№: *" + msg[1] + "\n" +
+                                                 "*Тип станка: *" + msg[2] + "\n" + "*Участок: *" + msg[
+                                                     3] + "\n" "*Дата: *" + str(msg[4])[
+                                                                            :10],
+                                            parse_mode="Markdown")
+                    bot_3.send_message(call.message.chat.id, 'Отлично! ТО завершено')
+                else:
+                    sql = "UPDATE maintenance SET status = %s, start_time = %s WHERE id = %s "
+                    val = ('В процессе', datetime.now(), EQuery['to_id'])
+                    cursor.execute(sql, val)
+                    db.commit()
+
+                    keyboard = telebot.types.InlineKeyboardMarkup()
+                    key_1 = telebot.types.InlineKeyboardButton('ТО_завершено. Неисправностей не обнаружено.', callback_data='to_done')
+                    keyboard.add(key_1)
+                    key_2 = telebot.types.InlineKeyboardButton('ТО завершено. Есть комментарий...', callback_data='comment_to')
+                    keyboard.add(key_2)
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="*ТО в процессе*" + "\n" + "*id_TO: *" + str(EQuery['to_id']) + "\n" +
+                           "*Оборудование: *" + msg[0] + "\n" + "*Инв.№: *" + msg[1] + "\n" +
+                           "*Тип станка: *" + msg[2] + "\n" + "*Участок: *" + msg[3] + "\n" "*Дата: *" + str(msg[4])[:10] + "\n" + "*ТО в процессе*", parse_mode="Markdown")
+                    bot_3.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=keyboard)
 
             elif call.data == 'to_done':
                 db = mysql.connector.connect(
@@ -382,10 +412,6 @@ while True:
                 cursor = db.cursor(True)
                 msg = re.findall(r'\d+', call.message.text)  # блок считывания id то
                 EQuery['to_id'] = msg[0]
-                sql = "UPDATE maintenance SET status = %s, end_time = %s WHERE id = %s "
-                val = ('Завершено', datetime.now(), EQuery['to_id'])
-                cursor.execute(sql, val)
-                db.commit()
 
                 sql = "SELECT equipment.eq_name, equipment.invnum, equipment.eq_type, equipment.area, maintenance.start_time " \
                       "FROM " \
@@ -394,12 +420,30 @@ while True:
                 cursor.execute(sql, val)
                 msg = cursor.fetchone()
 
-                bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                                        text="*ТО завершено*" + "\n" + "*id_TO: *" + str(EQuery['to_id']) + "\n" +
-                                             "*Оборудование: *" + msg[0] + "\n" + "*Инв.№: *" + msg[1] + "\n" +
-                                             "*Тип станка: *" + msg[2] + "\n" + "*Участок: *" + msg[
-                                                 3] + "\n" "*Дата: *" + str(msg[4])[:10] + "\n" + "*Неисправностей не обнаружено*", parse_mode="Markdown")
-                bot_3.send_message(call.message.chat.id, 'Отлично! ТО завершено')
+                sql = "SELECT status FROM maintenance WHERE (id = %s)"
+                val = (EQuery['to_id'],)
+                cursor.execute(sql, val)
+                status = cursor.fetchone()
+                if status[0] == 'Завершено':
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            text="*ТО завершено*" + "\n" + "*id_TO: *" + str(EQuery['to_id']) + "\n" +
+                                                 "*Оборудование: *" + msg[0] + "\n" + "*Инв.№: *" + msg[1] + "\n" +
+                                                 "*Тип станка: *" + msg[2] + "\n" + "*Участок: *" + msg[
+                                                     3] + "\n" "*Дата: *" + str(msg[4])[
+                                                                            :10],
+                                            parse_mode="Markdown")
+                    bot_3.send_message(call.message.chat.id, 'Отлично! ТО завершено')
+                else:
+                    sql = "UPDATE maintenance SET status = %s, end_time = %s WHERE id = %s "
+                    val = ('Завершено', datetime.now(), EQuery['to_id'])
+                    cursor.execute(sql, val)
+                    db.commit()
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            text="*ТО завершено*" + "\n" + "*id_TO: *" + str(EQuery['to_id']) + "\n" +
+                                                 "*Оборудование: *" + msg[0] + "\n" + "*Инв.№: *" + msg[1] + "\n" +
+                                                 "*Тип станка: *" + msg[2] + "\n" + "*Участок: *" + msg[
+                                                     3] + "\n" "*Дата: *" + str(msg[4])[:10], parse_mode="Markdown")
+                    bot_3.send_message(call.message.chat.id, 'Отлично! ТО завершено')
             elif call.data == 'comment_to':
                 db = mysql.connector.connect(
                     host='localhost',
