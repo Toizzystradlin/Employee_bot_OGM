@@ -94,15 +94,18 @@ while True:
                         query = cursor.fetchone()
 
                         keyboard = telebot.types.InlineKeyboardMarkup()
-                        key_1 = telebot.types.InlineKeyboardButton('Заявка завершена.',
+                        key_1 = telebot.types.InlineKeyboardButton('Заявка завершена...',
                                                                    callback_data='done_this_query')
                         keyboard.add(key_1)
-                        key_2 = telebot.types.InlineKeyboardButton('Комментарий...',
-                                                                   callback_data='leave_comment')
-                        keyboard.add(key_2)
+                        #key_2 = telebot.types.InlineKeyboardButton('Комментарий...',
+                        #                                           callback_data='leave_comment')
+                        #keyboard.add(key_2)
+
+                        key_3 = telebot.types.InlineKeyboardButton('Приостановить...', callback_data='stop_query')
+                        keyboard.add(key_3)
                         bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                                 parse_mode="Markdown",
-                                                text="*В процессе*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
+                                                text="*В ПРОЦЕССЕ*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
                                                      "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[2] + "\n" +
                                                      "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
                                                          4] + "\n" "*Причина поломки: *" + query[5] + "\n" + "*Сообщение: *" + str(query[6]) + "\n" + "*В процессе*")
@@ -157,6 +160,139 @@ while True:
                                                query[4] + "\n" + "*Сообщение: *" + str(query[5]), reply_markup=keyboard, parse_mode="Markdown")
                 #except Exception as ex:
                     #print(ex)
+
+            elif call.data == 'stop_query':
+                # try:
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
+                EQuery['query_id'] = msg[0]
+                sql = "SELECT query_status FROM queries WHERE query_id = %s"
+                val = (EQuery['query_id'],)
+                cursor.execute(sql, val)
+                m = cursor.fetchone()
+                if m[0] == 'Завершена':
+                    sql = "SELECT queries.query_id, equipment.eq_name, equipment.invnum, equipment.eq_type, " \
+                          "equipment.area, queries.reason, queries.msg, queries.comment FROM equipment JOIN queries ON (queries.query_id = %s) AND (queries.eq_id = equipment.eq_id)"
+                    val = (EQuery['query_id'],)
+                    cursor.execute(sql, val)
+                    query = cursor.fetchone()
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            parse_mode="Markdown",
+                                            text="*ВЫПОЛНЕНА*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
+                                                 "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[2] + "\n" +
+                                                 "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
+                                                     4] + "\n" "*Причина поломки: *" + query[
+                                                     5] + "\n" + "*Сообщение: *" + str(
+                                                query[6]) + "\n" + "*ВЫПОЛНЕНА*")
+                else:
+                    sql = "UPDATE queries SET query_status = %s WHERE query_id = %s "
+                    val = ('Приостановлена', EQuery['query_id'])
+                    cursor.execute(sql, val)
+                    db.commit()
+                    sql = "SELECT * FROM worktime WHERE (query_id = %s) ORDER BY id DESC"  # получаем все работы по заявке
+                    val = (EQuery['query_id'],)
+                    cursor.execute(sql, val)
+                    work_id = cursor.fetchall()
+
+                    for i in work_id:
+                        sql = "UPDATE worktime SET stop_time = %s WHERE (id = %s) AND (stop_time IS NULL)"
+                        val = (datetime.now(), i[0])
+                        cursor.execute(sql, val)
+                        db.commit()
+
+                    sql = "SELECT queries.query_id, equipment.eq_name, equipment.invnum, equipment.eq_type, " \
+                          "equipment.area, queries.reason, queries.msg FROM equipment JOIN queries ON (queries.query_id = %s) AND (queries.eq_id = equipment.eq_id)"
+                    val = (EQuery['query_id'],)
+                    cursor.execute(sql, val)
+                    query = cursor.fetchone()
+
+                    keyboard = telebot.types.InlineKeyboardMarkup()
+                    key_1 = telebot.types.InlineKeyboardButton('Заявка завершена...',
+                                                               callback_data='done_this_query')
+                    keyboard.add(key_1)
+                    key_2 = telebot.types.InlineKeyboardButton('Продолжить...', callback_data='continue')
+                    keyboard.add(key_2)
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            parse_mode="Markdown", reply_markup=keyboard,
+                                            text="*ПРИОСТАНОВЛЕНА*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
+                                                 "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[2] + "\n" +
+                                                 "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
+                                                     4] + "\n" "*Причина поломки: *" + query[
+                                                     5] + "\n" + "*Сообщение: *" + str(
+                                                query[6]) + "\n" + "*ПРИОСТАНОВЛЕНА*")
+                    msg_to_delete = call.message.message_id
+                    msg = bot_3.send_message(call.message.chat.id, 'Пожалуйста опишите причину приостановки:')
+                    bot_3.register_next_step_handler(msg, leave_comment)
+
+            elif call.data == 'continue':
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                emp_id = call.message.chat.id
+
+                sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
+                val = (emp_id,)
+                cursor.execute(sql, val)
+                man_id = cursor.fetchone()[0]
+                msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
+                EQuery['query_id'] = msg[0]
+
+                sql = "SELECT query_status FROM queries WHERE query_id = %s"
+                val = (EQuery['query_id'],)
+                cursor.execute(sql, val)
+                m = cursor.fetchone()
+                if m[0] == 'Завершена':
+                    bot_3.send_message(call.message.chat.id, 'Заявка уже завершена...')
+                else:
+                    try:
+                        sql = "INSERT INTO worktime (query_id, employee_id, start_time) VALUES (%s, %s, %s)"  # создает новую запись в работы
+                        val = (EQuery['query_id'], man_id, datetime.now())
+                        cursor.execute(sql, val)
+                        db.commit()
+
+                        sql = "SELECT queries.query_id, equipment.eq_name, equipment.invnum, equipment.eq_type, " \
+                              "equipment.area, queries.reason, queries.msg FROM equipment JOIN queries ON (queries.query_id = %s) AND (queries.eq_id = equipment.eq_id)"
+                        val = (EQuery['query_id'],)
+                        cursor.execute(sql, val)
+                        query = cursor.fetchone()
+
+                        keyboard = telebot.types.InlineKeyboardMarkup()
+                        key_1 = telebot.types.InlineKeyboardButton('Заявка завершена...',
+                                                                   callback_data='done_this_query')
+                        keyboard.add(key_1)
+                        # key_2 = telebot.types.InlineKeyboardButton('Комментарий...',
+                        #                                           callback_data='leave_comment')
+                        # keyboard.add(key_2)
+
+                        key_3 = telebot.types.InlineKeyboardButton('Приостановить...', callback_data='stop_query')
+                        keyboard.add(key_3)
+                        bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                                parse_mode="Markdown",
+                                                text="*В ПРОЦЕССЕ*" + "\n" + "*id заявки: *" + str(query[0]) + "\n" +
+                                                     "*Оборудование: *" + query[1] + "\n" + "*Инв.№: *" + query[
+                                                         2] + "\n" +
+                                                     "*Тип станка: *" + query[3] + "\n" + "*Участок: *" + query[
+                                                         4] + "\n" "*Причина поломки: *" + query[
+                                                         5] + "\n" + "*Сообщение: *" + str(
+                                                    query[6]) + "\n" + "*В ПРОЦЕССЕ*")
+                        bot_3.edit_message_reply_markup(chat_id=call.message.chat.id,
+                                                        message_id=call.message.message_id,
+                                                        reply_markup=keyboard)
+                    except:
+                        bot_3.send_message(call.message.chat.id,
+                                           'Что то не работает! Какая то ошибка в блоке continue')
 
             elif call.data == 'done_this_query':
                 #try:
@@ -221,7 +357,7 @@ while True:
                         pass
 
                     for i in work_id:
-                        sql = "UPDATE worktime SET stop_time = %s WHERE (id = %s)"
+                        sql = "UPDATE worktime SET stop_time = %s WHERE (id = %s) AND (stop_time IS NULL)"
                         val = (datetime.now(), i[0])
                         cursor.execute(sql, val)
                         db.commit()
@@ -239,6 +375,8 @@ while True:
                                                      4] + "\n" "*Причина поломки: *" + query[
                                                      5] + "\n" + "*Сообщение: *" + str(
                                                 query[6]) + "\n" + "*ВЫПОЛНЕНА*")
+                    msg = bot_3.send_message(call.message.chat.id, 'Опишите выполенные работы...')
+                    bot_3.register_next_step_handler(msg, leave_comment)
 
                     try:
                         sql = "SELECT eq_name, invnum, eq_type, area FROM equipment WHERE (eq_id = %s)"
@@ -253,7 +391,7 @@ while True:
                         val = (EQuery['query_id'],)
                         cursor.execute(sql, val)
                         message = cursor.fetchone()[0]
-                        Send_message.send_message_4(name, invnum, eq_type, area, message)
+                        #Send_message.send_message_4(name, invnum, eq_type, area, message)
                     except Exception as ex:
                         print(ex)
 
@@ -500,6 +638,32 @@ while True:
             except Exception as ex:
                 print(ex)
         def leave_comment(message):
+            #try:
+            db = mysql.connector.connect(
+                host='localhost',
+                user='root',
+                passwd='12345',
+                port='3306',
+                database='ogm2'
+            )
+            cursor = db.cursor(True)
+            emp_id = message.chat.id  # блок выделения id сотрудника
+            sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
+            val = (emp_id,)
+            cursor.execute(sql, val)
+            man_id = cursor.fetchone()[0]
+            #query = user_dict[chat_id]
+            comment = message.text
+            sql = "INSERT INTO comments (author, text, created_date, query) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
+            val = (man_id, comment, datetime.now(), EQuery['query_id'])
+            cursor.execute(sql, val)
+            db.commit()
+            #bot_3.send_message(message.chat.id, 'Комментарий добавлен')
+            msg = bot_3.send_message(message.chat.id, 'Введите потраченные ТМЦ (если ничего не потрачено - отправьте любой символ)')
+            bot_3.register_next_step_handler(msg, supplies)
+            #except: print('ошибка в лив коммент')
+
+        def supplies(message):
             try:
                 db = mysql.connector.connect(
                     host='localhost',
@@ -515,14 +679,18 @@ while True:
                 cursor.execute(sql, val)
                 man_id = cursor.fetchone()[0]
 
+                cursor.execute("SELECT eq_id FROM queries WHERE query_id = %s", [EQuery['query_id']])
+                eq_id = cursor.fetchone()
+
                 #query = user_dict[chat_id]
-                comment = message.text
-                sql = "INSERT INTO comments (author, text, created_date, query) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
-                val = (man_id, comment, datetime.now(), EQuery[man_id])
+                supply = message.text
+                sql = "INSERT INTO supplies (query_id, eq_id, supply, emp_id) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
+                val = (EQuery['query_id'], eq_id[0], supply, man_id)
                 cursor.execute(sql, val)
                 db.commit()
 
-                bot_3.send_message(message.chat.id, 'Комментарий добавлен')
+                bot_3.send_message(message.chat.id, 'Спасибо')
+
             except: print('ошибка в лив коммент')
 
 
