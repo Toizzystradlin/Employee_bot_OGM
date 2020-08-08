@@ -375,7 +375,7 @@ while True:
                                                      4] + "\n" "*Причина поломки: *" + query[
                                                      5] + "\n" + "*Сообщение: *" + str(
                                                 query[6]) + "\n" + "*ВЫПОЛНЕНА*")
-                    msg = bot_3.send_message(call.message.chat.id, 'Опишите выполенные работы...')
+                    msg = bot_3.send_message(call.message.chat.id, 'Опишите выполненные работы...')
                     bot_3.register_next_step_handler(msg, leave_comment)
 
                     try:
@@ -391,7 +391,7 @@ while True:
                         val = (EQuery['query_id'],)
                         cursor.execute(sql, val)
                         message = cursor.fetchone()[0]
-                        #Send_message.send_message_4(name, invnum, eq_type, area, message)
+                        Send_message.send_message_4(name, invnum, eq_type, area, message)
                     except Exception as ex:
                         print(ex)
 
@@ -691,7 +691,9 @@ while True:
 
                 bot_3.send_message(message.chat.id, 'Спасибо')
 
-            except: print('ошибка в лив коммент')
+            except:
+                print('ошибка в лив саплайс')
+                bot_3.send_message(message.chat.id, 'Спасибо')
 
 
         while True:
