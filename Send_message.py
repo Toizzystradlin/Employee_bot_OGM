@@ -118,4 +118,23 @@ def send_message_4(name, eq_type, inv, area, msg):
                            "*ЗАЯВКА ВЫПОЛНЕНА*", parse_mode="Markdown")
     cursor4.close()
 
+def send_message_5(text):
+    import telebot
+    db = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        passwd='12345',
+        port='3306',
+        database='ogm2'
+    )
+    cursor4 = db.cursor(buffered=True)
+    #sql = "SELECT tg_id FROM employees WHERE (master = True)"
+    sql = "SELECT tg_id FROM employees WHERE (rank = 'инженер')"
+    cursor4.execute(sql)
+    masters_id = cursor4.fetchall()
 
+    bot_2 = telebot.TeleBot('1044824865:AAGACPaLwqHdOMn5HZamAmSljkoDvSwOiBw')
+    for i in masters_id:
+        bot_2.send_message(i[0], "*ЗАЯВКА ВЫПОЛНЕНА*" + "\n" + "*Сообщение: *" + str(text) + "\n" +
+                           "*ЗАЯВКА ВЫПОЛНЕНА*", parse_mode="Markdown")
+    cursor4.close()

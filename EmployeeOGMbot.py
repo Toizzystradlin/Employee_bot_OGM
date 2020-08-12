@@ -114,6 +114,69 @@ while True:
                     except:
                         bot_3.send_message(call.message.chat.id, 'Что то не работает! Какая то ошибка в блоке start_now')
 
+            elif call.data == 'start_now_work':
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                emp_id = call.message.chat.id
+
+                sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
+                val = (emp_id,)
+                cursor.execute(sql, val)
+                man_id = cursor.fetchone()[0]
+                msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
+                EQuery['work_id'] = msg[0]
+
+                sql = "SELECT query_status FROM unstated_works WHERE work_id = %s"
+                val = (EQuery['work_id'],)
+                cursor.execute(sql, val)
+                m = cursor.fetchone()
+                if m[0] == 'Завершена':
+                    bot_3.send_message(call.message.chat.id, 'Работа уже завершена...')
+                else:
+                    try:
+                        sql = "SELECT start_time FROM unstated_works WHERE (work_id = %s)"  # проверка на то , начаты ли работы уже
+                        val = (EQuery['work_id'],)
+                        cursor.execute(sql, val)
+                        st = cursor.fetchone()
+                        if st[0] == None:
+                            sql = "UPDATE unstated_works SET query_status = %s, start_time = %s WHERE work_id = %s "  # 3аписывает время начала выполнения work (start time)
+                            val = ('В процессе', datetime.now(), EQuery['work_id'])
+                            cursor.execute(sql, val)
+                            db.commit()
+                        sql = "INSERT INTO worktime (work_id, employee_id, start_time) VALUES (%s, %s, %s)"  # создает новую запись в работы
+                        val = (EQuery['work_id'], man_id, datetime.now())
+                        cursor.execute(sql, val)
+                        db.commit()
+
+                        sql = "SELECT work_id, what FROM unstated_works WHERE work_id = %s"
+                        val = (EQuery['work_id'],)
+                        cursor.execute(sql, val)
+                        work = cursor.fetchone()
+
+                        keyboard = telebot.types.InlineKeyboardMarkup()
+                        key_1 = telebot.types.InlineKeyboardButton('Заявка завершена...',
+                                                                   callback_data='done_this_work')
+                        keyboard.add(key_1)
+
+                        key_3 = telebot.types.InlineKeyboardButton('Приостановить...', callback_data='stop_work')
+                        keyboard.add(key_3)
+                        bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                                parse_mode="Markdown",
+                                                text="*В ПРОЦЕССЕ*" + "\n" + "*id работы: *" + str(work[0]) + "\n" +
+                                                    "*Сообщение: *" + str(work[1]) + "\n" + "*В процессе*")
+                        bot_3.edit_message_reply_markup(chat_id=call.message.chat.id,
+                                                        message_id=call.message.message_id,
+                                                        reply_markup=keyboard)
+                    except:
+                        bot_3.send_message(call.message.chat.id,
+                                           'Что то не работает! Какая то ошибка в блоке start_now')
+
             elif call.data == 'my_queries':                                  # вывести все заявки сотрудника
                 #try:
                     db = mysql.connector.connect(
@@ -230,6 +293,71 @@ while True:
                     msg_to_delete = call.message.message_id
                     msg = bot_3.send_message(call.message.chat.id, 'Пожалуйста опишите причину приостановки:')
                     bot_3.register_next_step_handler(msg, leave_comment)
+
+            elif call.data == 'done_this_work':
+                # try:
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                msg = re.findall(r'\d+', call.message.text)  # блок считывания id заявки
+                EQuery['work_id'] = msg[0]
+                sql = "SELECT query_status FROM unstated_works WHERE work_id = %s"
+                val = (EQuery['work_id'],)
+                cursor.execute(sql, val)
+                m = cursor.fetchone()
+                if m[0] == 'Завершена':
+                    sql = "SELECT work_id, what FROM unstated_works WHERE work_id = %s"
+                    val = (EQuery['work_id'],)
+                    cursor.execute(sql, val)
+                    work = cursor.fetchone()
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            parse_mode="Markdown",
+                                            text="*ВЫПОЛНЕНА*" + "\n" + "*id работы: *" + str(work[0]) + "\n" +
+                                                "*Сообщение: *" + str(work[1]) + "\n" + "*ВЫПОЛНЕНА*")
+                else:
+                    sql = "UPDATE unstated_works SET query_status = %s WHERE work_id = %s "
+                    val = ('Завершена', EQuery['work_id'])
+                    cursor.execute(sql, val)
+                    db.commit()
+                    sql = "UPDATE unstated_works SET stop_time = %s WHERE work_id = %s"
+                    val = (datetime.now(), EQuery['work_id'])
+                    cursor.execute(sql, val)
+                    db.commit()
+                    sql = "SELECT * FROM worktime WHERE (work_id = %s) ORDER BY id DESC"  # получаем все работы по заявке
+                    val = (EQuery['work_id'],)
+                    cursor.execute(sql, val)
+                    work_id = cursor.fetchall()
+
+                    for i in work_id:
+                        sql = "UPDATE worktime SET stop_time = %s WHERE (id = %s) AND (stop_time IS NULL)"
+                        val = (datetime.now(), i[0])
+                        cursor.execute(sql, val)
+                        db.commit()
+
+                    sql = "SELECT work_id, what FROM unstated_works WHERE work_id = %s"
+                    val = (EQuery['work_id'],)
+                    cursor.execute(sql, val)
+                    work = cursor.fetchone()
+                    bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                            parse_mode="Markdown",
+                                            text="*ВЫПОЛНЕНА*" + "\n" + "*id заявки: *" + str(work[0]) + "\n" +
+                                                "*Сообщение: *" + str(work[1]) + "\n" + "*ВЫПОЛНЕНА*")
+                    msg = bot_3.send_message(call.message.chat.id, 'Опишите выполненные работы...')
+                    bot_3.register_next_step_handler(msg, leave_comment)
+
+                    #try:
+                    sql = "SELECT what FROM unstated_works WHERE work_id = %s"
+                    val = (EQuery['work_id'],)
+                    cursor.execute(sql, val)
+                    message = cursor.fetchone()[0]
+                    Send_message.send_message_5(message)
+                   # except Exception as ex:
+                     #   print(ex)
 
             elif call.data == 'continue':
                 db = mysql.connector.connect(
