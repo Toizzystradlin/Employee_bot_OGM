@@ -6,8 +6,6 @@ import json
 from telebot import apihelper
 import Send_message
 
-#apihelper.proxy = {'https':'https://51.158.111.229:8811'}  # рабочий прокси Франция
-#apihelper.proxy = {'https':'192.168.0.100:50278'}  #
 while True:
     try:
         db = mysql.connector.connect(
@@ -348,14 +346,28 @@ while True:
                                             text="*ВЫПОЛНЕНА*" + "\n" + "*id заявки: *" + str(work[0]) + "\n" +
                                                 "*Сообщение: *" + str(work[1]) + "\n" + "*ВЫПОЛНЕНА*")
                     msg = bot_3.send_message(call.message.chat.id, 'Опишите выполненные работы...')
-                    bot_3.register_next_step_handler(msg, leave_comment)
+                    bot_3.register_next_step_handler(msg, leave_comment_work)
 
                     #try:
                     sql = "SELECT what FROM unstated_works WHERE work_id = %s"
                     val = (EQuery['work_id'],)
                     cursor.execute(sql, val)
                     message = cursor.fetchone()[0]
-                    Send_message.send_message_5(message)
+
+                    sql = "SELECT json_emp FROM unstated_works WHERE work_id = %s"
+                    val = (EQuery['work_id'],)
+                    cursor.execute(sql, val)
+                    doers_json = cursor.fetchone()[0]
+                    doers_json = json.loads(doers_json)
+                    doers = doers_json['doers']
+                    doers_string = ''
+                    for i in doers:
+                        sql = "SELECT fio FROM employees WHERE employee_id = %s"
+                        val = (i,)
+                        cursor.execute(sql, val)
+                        doers_string = doers_string + cursor.fetchone()[0]
+
+                    Send_message.send_message_5(message, doers_string)
                    # except Exception as ex:
                      #   print(ex)
 
@@ -519,7 +531,20 @@ while True:
                         val = (EQuery['query_id'],)
                         cursor.execute(sql, val)
                         message = cursor.fetchone()[0]
-                        Send_message.send_message_4(name, invnum, eq_type, area, message)
+
+                        sql = "SELECT json_emp FROM queries WHERE query_id = %s"
+                        val = (EQuery['query_id'],)
+                        cursor.execute(sql, val)
+                        doers_json = cursor.fetchone()[0]
+                        doers_json = json.loads(doers_json)
+                        doers = doers_json['doers']
+                        doers_string = ''
+                        for i in doers:
+                            sql = "SELECT fio FROM employees WHERE employee_id = %s"
+                            val = (i,)
+                            cursor.execute(sql, val)
+                            doers_string = doers_string + cursor.fetchone()[0]
+                        Send_message.send_message_4(name, invnum, eq_type, area, message, doers_string)
                     except Exception as ex:
                         print(ex)
 
@@ -762,34 +787,120 @@ while True:
                 val = ('Завершено', datetime.now(), EQuery['to_id'])
                 cursor.execute(sql, val)
                 db.commit()
-                bot_3.send_message(message.chat.id, 'Комментарий записан, ТО завершено.')
+                #bot_3.send_message(message.chat.id, 'Комментарий записан, ТО завершено.')
+                msg = bot_3.send_message(message.chat.id,
+                                         'Введите потраченные ТМЦ (если ничего не потрачено - отправьте любой символ)')
+                bot_3.register_next_step_handler(msg, supplies_to)
+
             except Exception as ex:
                 print(ex)
         def leave_comment(message):
-            #try:
-            db = mysql.connector.connect(
-                host='localhost',
-                user='root',
-                passwd='12345',
-                port='3306',
-                database='ogm2'
-            )
-            cursor = db.cursor(True)
-            emp_id = message.chat.id  # блок выделения id сотрудника
-            sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
-            val = (emp_id,)
-            cursor.execute(sql, val)
-            man_id = cursor.fetchone()[0]
-            #query = user_dict[chat_id]
-            comment = message.text
-            sql = "INSERT INTO comments (author, text, created_date, query) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
-            val = (man_id, comment, datetime.now(), EQuery['query_id'])
-            cursor.execute(sql, val)
-            db.commit()
-            #bot_3.send_message(message.chat.id, 'Комментарий добавлен')
-            msg = bot_3.send_message(message.chat.id, 'Введите потраченные ТМЦ (если ничего не потрачено - отправьте любой символ)')
-            bot_3.register_next_step_handler(msg, supplies)
-            #except: print('ошибка в лив коммент')
+            try:
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                emp_id = message.chat.id  # блок выделения id сотрудника
+                sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
+                val = (emp_id,)
+                cursor.execute(sql, val)
+                man_id = cursor.fetchone()[0]
+                #query = user_dict[chat_id]
+                comment = message.text
+                sql = "INSERT INTO comments (author, text, created_date, query) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
+                val = (man_id, comment, datetime.now(), EQuery['query_id'])
+                cursor.execute(sql, val)
+                db.commit()
+                #bot_3.send_message(message.chat.id, 'Комментарий добавлен')
+                msg = bot_3.send_message(message.chat.id, 'Введите потраченные ТМЦ (если ничего не потрачено - отправьте любой символ)')
+                bot_3.register_next_step_handler(msg, supplies)
+            except: print('ошибка в лив коммент')
+
+        def leave_comment_work(message):
+            try:
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                emp_id = message.chat.id  # блок выделения id сотрудника
+                sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
+                val = (emp_id,)
+                cursor.execute(sql, val)
+                man_id = cursor.fetchone()[0]
+                #query = user_dict[chat_id]
+                comment = message.text
+                sql = "INSERT INTO comments (author, text, created_date, work) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
+                val = (man_id, comment, datetime.now(), EQuery['work_id'])
+                cursor.execute(sql, val)
+                db.commit()
+                #bot_3.send_message(message.chat.id, 'Комментарий добавлен')
+                msg = bot_3.send_message(message.chat.id, 'Введите потраченные ТМЦ (если ничего не потрачено - отправьте любой символ)')
+                bot_3.register_next_step_handler(msg, supplies_work)
+            except: print('ошибка в лив коммент')
+
+        def supplies_to(message):
+            try:
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                emp_id = message.chat.id  # блок выделения id сотрудника
+                sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
+                val = (emp_id,)
+                cursor.execute(sql, val)
+                man_id = cursor.fetchone()[0]
+
+                cursor.execute('SELECT eq_id FROM maintenance WHERE id = %s', [EQuery['to_id']])
+                eq_id = cursor.fetchone()[0]
+
+                supply = message.text
+                sql = "INSERT INTO supplies (to_id, supply, emp_id, eq_id) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
+                val = (EQuery['to_id'], supply, man_id, eq_id)
+                cursor.execute(sql, val)
+                db.commit()
+                bot_3.send_message(message.chat.id, 'Спасибо')
+            except:
+                print('ошибка в лив саплайс')
+        #     bot_3.send_message(message.chat.id, 'Спасибо')
+
+        def supplies_work(message):
+            try:
+                db = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    passwd='12345',
+                    port='3306',
+                    database='ogm2'
+                )
+                cursor = db.cursor(True)
+                emp_id = message.chat.id  # блок выделения id сотрудника
+                sql = "SELECT employee_id FROM employees WHERE (tg_id = %s)"
+                val = (emp_id,)
+                cursor.execute(sql, val)
+                man_id = cursor.fetchone()[0]
+
+                supply = message.text
+                sql = "INSERT INTO supplies (work_id, supply, emp_id) VALUES (%s, %s, %s)"  # создает новую запись в комменты
+                val = (EQuery['work_id'], supply, man_id)
+                cursor.execute(sql, val)
+                db.commit()
+                bot_3.send_message(message.chat.id, 'Спасибо')
+
+            except:
+                print('ошибка в лив саплайс')
+           #     bot_3.send_message(message.chat.id, 'Спасибо')
 
         def supplies(message):
             try:
