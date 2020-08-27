@@ -162,8 +162,8 @@ while True:
                                                                    callback_data='done_this_work')
                         keyboard.add(key_1)
 
-                        key_3 = telebot.types.InlineKeyboardButton('Приостановить...', callback_data='stop_work')
-                        keyboard.add(key_3)
+                        #key_3 = telebot.types.InlineKeyboardButton('Приостановить...', callback_data='stop_work')
+                        #keyboard.add(key_3)
                         bot_3.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                                 parse_mode="Markdown",
                                                 text="*В ПРОЦЕССЕ*" + "\n" + "*id работы: *" + str(work[0]) + "\n" +
@@ -867,7 +867,7 @@ while True:
 
                 supply = message.text
                 sql = "INSERT INTO supplies (to_id, supply, emp_id, eq_id) VALUES (%s, %s, %s, %s)"  # создает новую запись в комменты
-                val = (EQuery['to_id'], supply, man_id, eq_id)
+                val = (EQuery['to_id'], supply, man_id, eq_id )
                 cursor.execute(sql, val)
                 db.commit()
                 bot_3.send_message(message.chat.id, 'Спасибо')
