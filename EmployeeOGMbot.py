@@ -12,7 +12,7 @@ db = mysql.connector.connect(
 )
 cursor = db.cursor(True)
 Query = {}
-bot_3 = telebot.TeleBot('1048673690:AAHPT1BfgqOoQ1bBXT1dcSiClLzwwOq0sPU')
+bot_3 = telebot.TeleBot('#')
 EQuery = {}
 
 @bot_3.message_handler(commands=['menu'])
